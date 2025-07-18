@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { createContext, useContext } from "react";
 import { initializeApp } from "firebase/app";
 import {getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged} from "firebase/auth"
+import {getFirestore, collection, addDoc} from 'firebase/firestore'
+import {getStorage, ref, uploadBytes} from 'firebase/storage'
 
 // Create Context
 const FirebaseContext = createContext();
@@ -27,7 +29,11 @@ const firebaseAuth = getAuth(firebaseApp);
 // Google Auth
 const googleProvider = new GoogleAuthProvider()
 
+// Firestore Database
+const firestore = getFirestore(firebaseApp);
 
+// Storage
+const storage = getStorage(firebaseApp);
 
 // Create Context Provider
 export const FirebaseProvider = (props)=>{
@@ -58,10 +64,27 @@ export const FirebaseProvider = (props)=>{
     const signInwithGoogle = ()=>{
         signInWithPopup(firebaseAuth, googleProvider)
     }
-
+    
+    // Check user LogedIn or not
     const isLogedIn = user ? true : false
+
+    // Add Listing
+    const createNewListing = async (name, isbn, price, coverPic)=>{
+        const imgRef =ref(storage, `uploads/images/${Date.now()}-${coverPic.name}`);
+        const uploadResult = await uploadBytes(imgRef, coverPic);
+        await addDoc(collection(firestore, 'books'),{
+            name,
+            isbn,
+            price,
+            imageUrl: uploadResult.ref.fullPath,
+            userID: user.uid,
+            userEmail: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL
+        })
+    }
     return(
-        <FirebaseContext.Provider value={{signUpUserWithEmailAndPassword, loginWithEmailAndPassword, signInwithGoogle, isLogedIn}}>
+        <FirebaseContext.Provider value={{signUpUserWithEmailAndPassword, loginWithEmailAndPassword, signInwithGoogle, createNewListing, isLogedIn}}>
          {props.children}
         </FirebaseContext.Provider>
     )
